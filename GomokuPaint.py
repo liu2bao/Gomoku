@@ -6,7 +6,7 @@ from GomokuConst import rows_default, cols_default, COLORS_ALL
 LINE_WIDTH = 1
 BORDER_WIDTH = LINE_WIDTH * 2
 LINE_COLOR = BORDER_COLOR = BLACK = (0, 0, 0)
-BIAS_PIVOT_X = BIAS_PIVOT_Y = 2
+BIAS_PIVOT_X = BIAS_PIVOT_Y = 4
 RATE_STONE = 0.8
 MBX = MBY = 2
 LABEL_X = 'x'
@@ -21,8 +21,10 @@ class GomokuPainter:
         self._cols = c
         self._img_path = ip
         self._background_img = None
-        self.__mbx = MBX
-        self.__mby = MBY
+        self._mbx = MBX
+        self._mby = MBY
+        self._bpx = BIAS_PIVOT_X
+        self._bpy = BIAS_PIVOT_Y
         self._coords = {}
         self._intervals = {}
         self.update_board_coords()
@@ -122,7 +124,7 @@ class GomokuPainter:
         self.__colors_stones = colors_stones
 
     def update_board_coords(self):
-        paras = {LABEL_X: (self._width, self._cols, self.__mbx), LABEL_Y: (self._height, self._rows, self.__mby)}
+        paras = {LABEL_X: (self._width, self._cols, self._mbx), LABEL_Y: (self._height, self._rows, self._mby)}
         for l, p in paras.items():
             full_len, n, mb = p
             total_lines = n + mb * 2
@@ -174,7 +176,13 @@ class GomokuPainter:
                 pygame.draw.line(self.__screen, LINE_COLOR, line_t[0], line_t[1], LINE_WIDTH)
 
     def draw_pivots(self):
-        pass
+        mx = int(self._cols/2)
+        my = int(self._rows/2)
+        for xs in [self._bpx-1,mx,self._cols-self._bpx]:
+            for ys in [self._bpy-1,my,self._rows-self._bpy]:
+                pygame.draw.circle(self.__screen,LINE_COLOR,
+                                   [int(p) for p in [self._coords[LABEL_X][xs],self._coords[LABEL_Y][ys]]],
+                                   int(LINE_WIDTH*3))
 
     def draw_stone(self, row, col, color):
         w_t = self._intervals[LABEL_X] * self.__rate_stone
@@ -216,3 +224,12 @@ class GomokuPainter:
         if self.judge_valid_player(player):
             return self.__colors_stones[player]
         return None
+
+    def paint_all(self,board=None):
+        self.refresh_bg()
+        self.draw_border()
+        self.draw_grids()
+        self.draw_pivots()
+        if board is not None:
+            self.draw_board(board)
+

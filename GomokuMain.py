@@ -80,11 +80,12 @@ clock = pygame.time.Clock()
 background_img = G.GP.get_bg_img()
 
 
-
+orders = G.GH.board.copy()
 pygame.init()
 pygame.mixer.init()
 running = True
 flag_win = False
+count = 0
 while running:
     # 设置屏幕刷新频率
     clock.tick(FPS)
@@ -110,15 +111,14 @@ while running:
             # time.sleep(2)
         if all([k is not None for k in [row, col]]):
             flag_win = G.GH.place_piece(row, col)
+            orders[row,col] = count
+            count += 1
             if flag_win:
                 print('Player # %s wins' % G.current_player_alias)
+                print(orders)
 
     # draw_background(screen)
-    G.GP.refresh_bg()
-    G.GP.draw_border()
-    G.GP.draw_grids()
-    G.GP.draw_pivots()
-    G.GP.draw_board(G.GH.board)
+    G.GP.paint_all(G.GH.board)
 
     if (not flag_win) and (not flag_over):
         if G.get_current_player_type() == TYPE_HUMAN:
@@ -132,40 +132,5 @@ while running:
     pygame.display.flip()
 
 
-def draw_background(surf):
-    # 加载背景图片
-    surf.blit(background_img, (0, 0))
 
-    # 画网格线，棋盘为 19行 19列的
-    # 1. 画出边框，这里 GRID_WIDTH = WIDTH // 20
-    rect_lines = [
-        ((GRID_WIDTH, GRID_WIDTH), (GRID_WIDTH, HEIGHT - GRID_WIDTH)),
-        ((GRID_WIDTH, GRID_WIDTH), (WIDTH - GRID_WIDTH, GRID_WIDTH)),
-        ((GRID_WIDTH, HEIGHT - GRID_WIDTH),
-         (WIDTH - GRID_WIDTH, HEIGHT - GRID_WIDTH)),
-        ((WIDTH - GRID_WIDTH, GRID_WIDTH),
-         (WIDTH - GRID_WIDTH, HEIGHT - GRID_WIDTH)),
-    ]
-    for line in rect_lines:
-        pygame.draw.line(surf, BLACK, line[0], line[1], 2)
-
-    # 画出中间的网格线
-    for i in range(17):
-        pygame.draw.line(surf, BLACK,
-                         (GRID_WIDTH * (2 + i), GRID_WIDTH),
-                         (GRID_WIDTH * (2 + i), HEIGHT - GRID_WIDTH))
-        pygame.draw.line(surf, BLACK,
-                         (GRID_WIDTH, GRID_WIDTH * (2 + i)),
-                         (HEIGHT - GRID_WIDTH, GRID_WIDTH * (2 + i)))
-
-    # 画出棋盘中的五个点，围棋棋盘上为9个点，这里我们只画5个
-    circle_center = [
-        (GRID_WIDTH * 4, GRID_WIDTH * 4),
-        (WIDTH - GRID_WIDTH * 4, GRID_WIDTH * 4),
-        (WIDTH - GRID_WIDTH * 4, HEIGHT - GRID_WIDTH * 4),
-        (GRID_WIDTH * 4, HEIGHT - GRID_WIDTH * 4),
-        (GRID_WIDTH * 10, GRID_WIDTH * 10)
-    ]
-    for cc in circle_center:
-        pygame.draw.circle(surf, BLACK, cc, 5)
 

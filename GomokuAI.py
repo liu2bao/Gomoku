@@ -150,7 +150,7 @@ class GomokuAIScore:
         for series in [series_ori, series_ori[-1::-1]]:
             for hh in range(len(series) - len(pattern) + 1):
                 series_cut = series[hh:hh + len(pattern)]
-                flag_match = series_cut == list(pattern)
+                flag_match = list(series_cut) == list(pattern)
                 if flag_match:
                     break
             if flag_match:
@@ -302,18 +302,78 @@ class GomokuPatternGenerator():
             dict_patterns_new.update(dpn_t)
         return dict_patterns_new
 
+    def check_chain(self,pattern):
+        mc = 0
+        for i in range(len(pattern)):
+            p = pattern[i]
+            if p==self._s:
+                mc += 1
+                if mc>=self._chain_num:
+                    return True
+            else:
+                mc = 0
+        return False
+
+    def generate_patterns(self,layer=1):
+        patterns_winning = {0:[[self._s]*self._chain_num]}
+        patterns_puzzles = {}
+        increase_keys = list(patterns_winning.keys())
+        for l in range(layer):
+            increase_keys_new = []
+            patterns_puzzles_new = {}
+            for ik in increase_keys:
+                pattern_puzzle_t = []
+                if ik in patterns_winning.keys():
+                    pwt_s = patterns_winning[ik]
+                    for pwt in pwt_s:
+                        for hh in range(len(pwt)):
+                            if pwt[hh]==self._s:
+                                pwtt = list(pwt)
+                                pwtt[hh] = self._e
+                                if (pwtt not in pattern_puzzle_t) and (pwtt[-1::-1] not in pattern_puzzle_t):
+                                    pattern_puzzle_t.append(pwtt)
+                patterns_puzzles_new[ik] = pattern_puzzle_t
+            for k1,puzzle1 in patterns_puzzles_new.items():
+                for dict2 in [patterns_puzzles_new,patterns_puzzles]:
+                    for k2,puzzle2 in dict2.items():
+                        kcomb = (k1,k2)
+                        patterns_comb = []
+                        for p1 in puzzle1:
+                            for p2 in puzzle2:
+                                dict_patterns_new = self.merge_patterns_flip(p1,p2,self._e)
+                                patterns_winning_new = list(dict_patterns_new.keys())
+                                patterns_winning_new_valid = [p for p in patterns_winning_new
+                                                              if not self.check_chain(p)]
+                                patterns_comb.extend(patterns_winning_new_valid)
+                        idx_comb_valid = []
+                        idx_all_t = set([kk for kk in range(len(patterns_comb))])
+                        for hh1 in range(len(patterns_comb)):
+                            p1 = patterns_comb[hh1]
+                            flag_valid_t = True
+                            patterns_comb_diff = [patterns_comb[k] for k in idx_all_t.difference({hh1})]
+                            for pct in [patterns_comb_diff,patterns_winning.values()]:
+                                for p2 in pct:
+                                    if GomokuAIScore.match_pattern(p1,p2):
+                                        flag_valid_t = False
+                                        break
+                                if not flag_valid_t:
+                                    break
+                            if flag_valid_t:
+                                idx_comb_valid.append(hh1)
+                        patterns_comb_valid = [patterns_comb[hh] for hh in idx_comb_valid]
+                        patterns_winning[kcomb] = patterns_comb_valid
+                        increase_keys_new.append(kcomb)
+            increase_keys = increase_keys_new.copy()
+            patterns_puzzles.update(patterns_puzzles_new)
+        return patterns_winning,patterns_puzzles
+
+
+
+
+
 
 if __name__=='__main__':
-    p1 = [1, 0, 1, 1, 0, 1, 0, 1, 1]
-    p2 = [1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1]
-    '''
-    for i in range(len(p1) + len(p2)):
-        pcat, p1o, p2o, oleft, oright = GomokuPatternGenerator.cat_pattern(p1, p2, i, len(p1), len(p2))
-        print(str(i) + ' : ' + str(pcat) + '  ' + str(p1o) + '  ' + str(p2o)+'  '+str(oleft)+'  '+str(oright))
-    '''
-    p1 = [1,1,1,1,0]
-    p2 = p1.copy()
-    dict_patterns_new = GomokuPatternGenerator.merge_patterns_flip(p1,p2,0)
-    print(dict_patterns_new)
-
-    pass
+    GPG = GomokuPatternGenerator()
+    pw,pz = GPG.generate_patterns(2)
+    print(pw)
+    print(pz)
