@@ -3,7 +3,7 @@ import numpy as np
 
 
 class GomokuHandler:
-    def __init__(self, r=rows_default, c=cols_default, board=None, mpn=2):
+    def __init__(self, r=rows_default, c=cols_default, board=None, mpn=2, chain_num=chain_num_default):
         if isinstance(board, np.ndarray):
             self._rows, self._cols = board.shape
             self._board = board
@@ -12,7 +12,7 @@ class GomokuHandler:
             self._cols = c
             self._board = np.ones([r, c], dtype=np.int) * SYMBOL_EMPTY
         self._current_player = 0
-        self.__chain_num = chain_num_default
+        self.__chain_num = chain_num
         self.__max_player_num = mpn
 
     @property

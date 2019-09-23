@@ -176,7 +176,8 @@ class GomokuAIScore:
         coor_cur = np.array((r, c))
         directions = np.array(((0, 1), (1, 0), (1, 1), (-1, 1)))
         dict_series = {}
-        num_cand = 2 * self._max_pattern_len - 1
+        #TODO: row number not equal to column number?
+        num_cand = min([2 * self._max_pattern_len - 1,rows,cols])
         pos_center = int((num_cand - 1) / 2)
         for d in directions:
             mpt = [None] * num_cand
@@ -188,6 +189,8 @@ class GomokuAIScore:
                     pos = coor_cur + d * step
                     if (0 <= pos[0] < rows) and (0 <= pos[1] < cols):
                         mpt[hh] = board[pos[0], pos[1]]
+                    else:
+                        break
             dict_series[tuple(d)] = mpt
         if return_center:
             return dict_series, pos_center
@@ -228,6 +231,7 @@ class GomokuAIScore:
                                 dict_series_t[k] = vv
                             score_temp, pattern_matched = self.score_pos(dict_series_t, p)
                             score_temp_mod = score_temp - min(self._score_dict.values())
+                            # score_temp_mod = score_temp/den
                             mat_scores[r, c, hh] += score_temp_mod
                 else:
                     mat_scores[r, c, :] = -1
@@ -250,6 +254,15 @@ class GomokuAIScoreAlpha(GomokuAIScore):
         }
         self.update_score_dict(sdu)
         self.max_pattern_len = None
+
+
+class GomokuAIScoreBeta(GomokuAIScore):
+    def __init__(self, chain_num=chain_num_default,layer=2,max_pattern_len=None):
+        super(GomokuAIScoreBeta, self).__init__(chain_num)
+        GPG = GomokuPatternGenerator(chain_num,self.s,self.e,self.d)
+        dict_scores = GPG.generate_scores(layer)
+        self.score_dict = dict_scores
+        self.max_pattern_len = max_pattern_len
 
 
 class GomokuPatternGenerator():
@@ -315,9 +328,11 @@ class GomokuPatternGenerator():
         return False
 
     def generate_patterns(self,layer=1):
-        patterns_winning = {0:[[self._s]*self._chain_num]}
+        key_0 = 0
+        patterns_winning = {key_0:{tuple([self._s]*self._chain_num):[0,self._chain_num]}}
         patterns_puzzles = {}
         increase_keys = list(patterns_winning.keys())
+        dict_keys_layers = {0:increase_keys}
         for l in range(layer):
             increase_keys_new = []
             patterns_puzzles_new = {}
@@ -325,8 +340,8 @@ class GomokuPatternGenerator():
                 pattern_puzzle_t = []
                 if ik in patterns_winning.keys():
                     pwt_s = patterns_winning[ik]
-                    for pwt in pwt_s:
-                        for hh in range(len(pwt)):
+                    for pwt,ovpos in pwt_s.items():
+                        for hh in range(ovpos[0],ovpos[1]):
                             if pwt[hh]==self._s:
                                 pwtt = list(pwt)
                                 pwtt[hh] = self._e
@@ -337,20 +352,18 @@ class GomokuPatternGenerator():
                 for dict2 in [patterns_puzzles_new,patterns_puzzles]:
                     for k2,puzzle2 in dict2.items():
                         kcomb = (k1,k2)
-                        patterns_comb = []
+                        patterns_comb = {}
                         for p1 in puzzle1:
                             for p2 in puzzle2:
                                 dict_patterns_new = self.merge_patterns_flip(p1,p2,self._e)
-                                patterns_winning_new = list(dict_patterns_new.keys())
-                                patterns_winning_new_valid = [p for p in patterns_winning_new
-                                                              if not self.check_chain(p)]
-                                patterns_comb.extend(patterns_winning_new_valid)
-                        idx_comb_valid = []
-                        idx_all_t = set([kk for kk in range(len(patterns_comb))])
-                        for hh1 in range(len(patterns_comb)):
-                            p1 = patterns_comb[hh1]
+                                patterns_winning_new_valid = {p:o for p,o in dict_patterns_new.items()
+                                                              if not self.check_chain(p)}
+                                patterns_comb.update(patterns_winning_new_valid)
+                        keys_comb_valid = []
+                        keys_all_t = set(list(patterns_comb.keys()))
+                        for p1 in patterns_comb.keys():
                             flag_valid_t = True
-                            patterns_comb_diff = [patterns_comb[k] for k in idx_all_t.difference({hh1})]
+                            patterns_comb_diff = keys_all_t.difference({p1})
                             for pct in [patterns_comb_diff,patterns_winning.values()]:
                                 for p2 in pct:
                                     if GomokuAIScore.match_pattern(p1,p2):
@@ -359,21 +372,99 @@ class GomokuPatternGenerator():
                                 if not flag_valid_t:
                                     break
                             if flag_valid_t:
-                                idx_comb_valid.append(hh1)
-                        patterns_comb_valid = [patterns_comb[hh] for hh in idx_comb_valid]
-                        patterns_winning[kcomb] = patterns_comb_valid
-                        increase_keys_new.append(kcomb)
-            increase_keys = increase_keys_new.copy()
-            patterns_puzzles.update(patterns_puzzles_new)
-        return patterns_winning,patterns_puzzles
+                                keys_comb_valid.append(p1)
+                        patterns_comb_valid = {k:patterns_comb[k] for k in keys_comb_valid}
+                        if patterns_comb_valid:
+                            patterns_winning[kcomb] = patterns_comb_valid
+                            increase_keys_new.append(kcomb)
+            patterns_puzzles_new = {k:v for k,v in patterns_puzzles_new.items() if v}
+            if patterns_puzzles_new:
+                increase_keys = increase_keys_new.copy()
+                patterns_puzzles.update(patterns_puzzles_new)
+                dict_keys_layers[l+1] = increase_keys_new
+            else:
+                break
+        return patterns_winning,patterns_puzzles,dict_keys_layers
 
+    def generate_scores(self,layer=1):
+        dict_scores = {}
+        patterns_winning, patterns_puzzles, dict_keys_layers = self.generate_patterns(layer)
+        layers = list(dict_keys_layers.keys())
+        layers.sort()
+        M = 1e8
+        dM = M/10
+        kz = 2
+        kp = 10
+        Nk = max(layers)
+        for l in layers:
+            ik = dict_keys_layers[l]
+            st = M - dM / Nk * l
+            stz = st/kz
+            for kt in ik:
+                if kt in patterns_winning.keys():
+                    for pattern_t in patterns_winning[kt].keys():
+                        dict_scores[pattern_t] = st
+                if kt in patterns_puzzles.keys():
+                    puzzles_t = patterns_puzzles[kt]
+                    puzzles_r_ori = puzzles_t.copy()
+                    stt = stz
+                    while True:
+                        puzzles_r_parent = []
+                        for puzzle_t in puzzles_r_ori:
+                            pnews_tuple = [tuple(k) for k in [puzzle_t, puzzle_t[-1::-1]]]
+                            pin = set(pnews_tuple).intersection(set(dict_scores.keys()))
+                            if pin:
+                                flag_append = False
+                                for ppin in pin:
+                                    scomp = dict_scores[ppin]
+                                    if scomp<stt:
+                                        flag_append = True
+                                        dict_scores[ppin] = stt
+                                if flag_append:
+                                    puzzles_r_parent.append(tuple(puzzle_t))
+                            else:
+                                dict_scores[tuple(puzzle_t)] = stt
+                                puzzles_r_parent.append(tuple(puzzle_t))
 
+                        puzzles_r = []
+                        for p in puzzles_r_parent:
+                            for hh in range(len(p)):
+                                pc = list(p)
+                                if pc[hh] == self._s:
+                                    pc[hh] = self._e
+                                    if not all([pcc==self._e for pcc in pc]):
+                                        puzzles_r.append(pc)
+                        stt /= kp
+                        if not puzzles_r:
+                            break
+                        else:
+                            puzzles_r_ori = puzzles_r.copy()
 
+        dict_scores_filtered = dict_scores.copy()
+        '''
+        dict_scores_filtered = {}
+        for p1 in dict_scores.keys():
+            flag_overlap = False
+            for p2 in set(dict_scores.keys()).difference({p1}):
+                if GomokuAIScore.match_pattern(p1,p2):
+                    s1, s2 = [dict_scores[k] for k in [p1,p2]]
+                    if s2 > s1:
+                        flag_overlap = True
+                        break
+            if not flag_overlap:
+                dict_scores_filtered[p1] = dict_scores[p1]
+        '''
+        patterns = list(dict_scores_filtered.keys())
+        scores = [dict_scores_filtered[p] for p in patterns]
+        idx = np.argsort(scores)[-1::-1]
+        dict_scores_sorted = {patterns[hh]:scores[hh] for hh in idx}
+        return dict_scores_sorted
 
 
 
 if __name__=='__main__':
-    GPG = GomokuPatternGenerator()
-    pw,pz = GPG.generate_patterns(2)
+    GPG = GomokuPatternGenerator(5)
+    ds = GPG.generate_scores(2)
+    pw,pz,dkl = GPG.generate_patterns(2)
     print(pw)
     print(pz)
