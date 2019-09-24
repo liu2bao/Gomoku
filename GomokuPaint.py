@@ -27,10 +27,10 @@ class GomokuPainter:
         self._bpy = BIAS_PIVOT_Y
         self._coords = {}
         self._intervals = {}
+        self._colors_stones = COLORS_ALL
         self.update_board_coords()
         self.__screen = None
         #self.__colors_stones = {SYMBOL_BLACK: (0, 0, 0), SYMBOL_WHITE: (255, 255, 255)}
-        self.__colors_stones = COLORS_ALL
         self.__rate_stone = RATE_STONE
 
     @property
@@ -91,7 +91,7 @@ class GomokuPainter:
 
     @property
     def colors_stones(self):
-        return self.__colors_stones
+        return self._colors_stones
 
     @height.setter
     def height(self, h):
@@ -121,7 +121,7 @@ class GomokuPainter:
     @colors_stones.setter
     def colors_stones(self,colors_stones):
         #TODO: check
-        self.__colors_stones = colors_stones
+        self._colors_stones = colors_stones
 
     def update_board_coords(self):
         paras = {LABEL_X: (self._width, self._cols, self._mbx), LABEL_Y: (self._height, self._rows, self._mby)}
@@ -195,7 +195,7 @@ class GomokuPainter:
         # pygame.draw.circle(self.__screen,color,[int(round(x_t)),int(round(y_t))],int(round(r_t)))
 
     def judge_valid_player(self,player):
-        f = 0<=player<len(self.__colors_stones)
+        f = 0<=player<len(self._colors_stones)
         return f
 
     def draw_board(self, board):
@@ -222,7 +222,7 @@ class GomokuPainter:
 
     def get_stone_color(self,player):
         if self.judge_valid_player(player):
-            return self.__colors_stones[player]
+            return self._colors_stones[player]
         return None
 
     def paint_all(self,board=None):

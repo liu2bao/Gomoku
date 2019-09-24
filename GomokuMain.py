@@ -1,14 +1,11 @@
 import pygame
 from GomokuPaint import GomokuPainter
 from GomokuAbstract import GomokuHandler
-from GomokuConst import SYMBOL_EMPTY, rows_default, cols_default, COLORS_ALL, TYPE_HUMAN, IP, chain_num_default
+from GomokuConst import SYMBOL_EMPTY, rows_default, cols_default, COLORS_ALL, TYPE_HUMAN, IP, chain_num_default, WIDTH, \
+    HEIGHT
 import numpy as np
 import warnings
 
-WIDTH = 600
-HEIGHT = 600
-GRID_WIDTH = int(WIDTH / 20)
-GRID_HEIGHT = int(HEIGHT / 20)
 
 class Gomoku:
     def __init__(self, h=HEIGHT, w=WIDTH, r=rows_default, c=cols_default, ip=IP,
