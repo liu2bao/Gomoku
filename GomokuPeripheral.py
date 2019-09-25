@@ -189,6 +189,7 @@ class GomokuStarter():
                                       text='Confirm', width=interval_w_t, height=interval_h_t,
                                       font_size=font_size, bg_rgb=rgb_bg, text_rgb=rgb_text,
                                       switch=False)
+        self._button_confirm.switch_state = SwitchState.On
         if default_choices is None:
             default_choices = {}
         self._radio_buttons = []
