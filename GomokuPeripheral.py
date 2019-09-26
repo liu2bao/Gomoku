@@ -3,7 +3,7 @@ import pygame.freetype
 from pygame.sprite import Sprite
 import numpy as np
 from enum import Enum, unique
-from GomokuConst import HEIGHT, WIDTH, COLORS_ALL, BLUE, WHITE
+from GomokuConst import HEIGHT, WIDTH, COLORS_ALL, BLUE, WHITE, BLACK, cns_default
 
 
 def create_surface_with_text(text, font_size, text_rgb, bg_rgb=None):
@@ -38,8 +38,7 @@ class Text(Sprite):
 class Button(Sprite):
     """ An user interface element that can be added to a surface """
 
-    def __init__(self, center_position, text, width, height, font_size,
-                 bg_rgb=BLUE, text_rgb=WHITE, switch=False):
+    def __init__(self, center_position, text, width, height, font_size, bg_rgb=BLUE, text_rgb=WHITE, switch=False):
         """
         Args:
             center_position - tuple (x, y)
@@ -82,14 +81,14 @@ class Button(Sprite):
     def alter_switch(self):
         self._switch_state = SwitchState((self._switch_state.value + 1) % len(SwitchState))
 
-    def update(self, mouse_pos, mouse_up):
+    def update(self, mouse_pos, mouse_down):
         """ Updates the element's appearance depending on the mouse position
             and returns the button's action if clicked.
         """
         flag_press = False
         if self.Rect.collidepoint(*mouse_pos):
             self.mouse_over = True
-            if mouse_up:
+            if mouse_down:
                 if self._switch:
                     self.alter_switch()
                 flag_press = True
@@ -145,9 +144,9 @@ class RadioButton(Sprite):
     def current_choice(self):
         return self._current_choice
 
-    def update(self, mouse_pos, mouse_up):
+    def update(self, mouse_pos, mouse_down):
         for k in self._buttons.keys():
-            flag_press = self._buttons[k].update(mouse_pos, mouse_up)
+            flag_press = self._buttons[k].update(mouse_pos, mouse_down)
             if flag_press:
                 if self._buttons[k].switch_state == SwitchState.Off:
                     self._current_choice = k
@@ -165,7 +164,57 @@ class RadioButton(Sprite):
             v.draw(surface)
 
 
-class GomokuStarter():
+AMP = 3
+
+
+class GomokuChainChooser(Sprite):
+    def __init__(self, center_pos, interval, left=False, color=BLACK, chain_nums_setting=cns_default):
+        cn_temp = list(chain_nums_setting)
+        cn_temp.sort()
+        self._chain_num_min, self._chain_num, self._chain_num_max = cn_temp
+        self._interval = interval
+        self._width = self._chain_num_max / 2 * self._interval
+        if left:
+            start_pos_x = center_pos[0]
+        else:
+            start_pos_x = center_pos[0] - self._width
+        self._circle_centers_x = start_pos_x + (np.arange(self._chain_num_max) + 0.5) * self._interval
+        self._circle_center_y = center_pos[1]
+        self._color = color
+        self._radius_full = interval / AMP
+        self._radius_thumb = self._radius_full / AMP
+        super().__init__()
+
+    @property
+    def chain_num(self):
+        return self._chain_num
+
+    @property
+    def width(self):
+        return self._width
+
+    def update(self, mouse_pos, mouse_down):
+        if mouse_down:
+            mpx, mpy = mouse_pos
+            c = int((mpx - self._circle_centers_x[0] + self._interval / 2) / self._interval)
+            if 0<=c<self._chain_num_max:
+                dists = (mpx - self._circle_centers_x[c], mpy - self._circle_center_y)
+                if all([np.abs(k) <= self._radius_full for k in dists]):
+                    cn = c + 1
+                    if cn >= self._chain_num_min:
+                        self._chain_num = cn
+
+    def draw(self, surface):
+        for i in range(self._chain_num_max):
+            circle_center_t = [int(self._circle_centers_x[i]), int(self._circle_center_y)]
+            if i >= self._chain_num:
+                r = self._radius_thumb
+            else:
+                r = self._radius_full
+            pygame.draw.circle(surface, self._color, circle_center_t, int(r))
+
+
+class GomokuStarter:
     def __init__(self, type_texts, font_size, rgb_bg=BLUE, rgb_text=WHITE, colors=COLORS_ALL,
                  width=WIDTH, height=HEIGHT, default_choices=None):
         self._screen = pygame.display.set_mode((width, height))
@@ -176,24 +225,30 @@ class GomokuStarter():
         num_players = len(colors)
         num_choices = len(type_texts)
         interval_w_t = width / (num_choices + 1.5)
-        interval_h_t = height / (num_players + 4)
+        interval_h_t = height / (num_players + 5)
         self._interval_w_t = interval_w_t
+        self._radius = self._interval_w_t / 16
         self._circle_center_x = interval_w_t * 0.25
         player_text_center_x = interval_w_t
         radio_button_center_x = interval_w_t * (1.5 + num_choices / 2)
         self._radio_button_centers_y = (np.arange(num_players) + 2.5) * interval_h_t
         self._title_text = Text(center_pos=(width / 2, interval_h_t),
                                 text='Please choose player types',
-                                font_size=font_size, text_rgb=rgb_text, bg_rgb=rgb_bg)
-        self._button_confirm = Button(center_position=(width / 2, interval_h_t * (num_players + 3)),
+                                font_size=font_size*1.5, text_rgb=rgb_text, bg_rgb=rgb_bg)
+        chain_y = interval_h_t * (num_players + 2.5)
+        self._chain_num_text = Text(center_pos=(player_text_center_x, chain_y),
+                                    text='Winning chain :', font_size=font_size, text_rgb=rgb_text,
+                                    bg_rgb=rgb_bg)
+        self._chain_num_chooser = GomokuChainChooser(center_pos=(radio_button_center_x, chain_y),
+                                                     interval=self._radius * AMP)
+        self._button_confirm = Button(center_position=(width / 2, interval_h_t * (num_players + 4)),
                                       text='Confirm', width=interval_w_t, height=interval_h_t,
-                                      font_size=font_size, bg_rgb=rgb_bg, text_rgb=rgb_text,
+                                      font_size=font_size, bg_rgb=rgb_text, text_rgb=rgb_bg,
                                       switch=False)
-        self._button_confirm.switch_state = SwitchState.On
         if default_choices is None:
             default_choices = {}
         self._radio_buttons = []
-        self._player_aliases = ['Player #'+str(i) for i in range(num_players)]
+        self._player_aliases = ['Player #' + str(i) for i in range(num_players)]
         self._player_texts = []
         for i in range(num_players):
             color_t = colors[i]
@@ -206,7 +261,7 @@ class GomokuStarter():
             y_t = self._radio_button_centers_y[i]
             radio_button_t = \
                 RadioButton(center_position=(radio_button_center_x, y_t),
-                            array_texts=type_texts, width=interval_w_t * num_choices, margin= 1,
+                            array_texts=type_texts, width=interval_w_t * num_choices, margin=1,
                             height=interval_h_t, font_size=font_size, bg_rgb=rgb_bg, text_rgb=rgb_text,
                             disable=disable, default_choice=default_choice)
             player_text_t = Text(center_pos=(player_text_center_x, y_t),
@@ -227,50 +282,55 @@ class GomokuStarter():
     def player_aliases(self):
         return self._player_aliases
 
-    def draw(self,surface=None):
+    @property
+    def chain_num(self):
+        return self._chain_num_chooser.chain_num
+
+    def draw(self, surface=None):
         if surface is None:
             surface = self._screen
         surface.fill(self._rgb_bg)
         self._title_text.draw(surface)
         self._button_confirm.draw(surface)
+        self._chain_num_text.draw(surface)
+        self._chain_num_chooser.draw(surface)
         for pt in self._player_texts:
             pt.draw(surface)
         for rb in self._radio_buttons:
             rb.draw(surface)
         for i in range(len(self._player_colors)):
-            cc = (int(self._circle_center_x),int(self._radio_button_centers_y[i]))
-            radius = int(self._interval_w_t / 16)
-            pygame.draw.circle(surface, self._player_colors[i], cc, radius)
+            cc = (int(self._circle_center_x), int(self._radio_button_centers_y[i]))
+            pygame.draw.circle(surface, self._player_colors[i], cc, int(self._radius))
         pygame.display.flip()
 
     def start(self):
         clock = pygame.time.Clock()
-
-        while True:
+        running = True
+        while running:
             clock.tick(3000)
             self.draw()
-            mouse_up = False
+            mouse_down = False
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                    mouse_up = True
-                elif event.type==pygame.QUIT:
-                    break
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button ==1:
+                    mouse_down = True
+                elif event.type == pygame.QUIT:
+                    running = False
 
             mouse_pos = pygame.mouse.get_pos()
             for i in range(len(self._radio_buttons)):
-                self._radio_buttons[i].update(mouse_pos=mouse_pos, mouse_up=mouse_up)
+                self._radio_buttons[i].update(mouse_pos=mouse_pos, mouse_down=mouse_down)
 
-            flag_confirm = self._button_confirm.update(mouse_pos=mouse_pos, mouse_up=mouse_up)
+            self._chain_num_chooser.update(mouse_pos=mouse_pos, mouse_down=mouse_down)
+            flag_confirm = self._button_confirm.update(mouse_pos=mouse_pos, mouse_down=mouse_down)
             if flag_confirm:
                 return flag_confirm
 
 
-
 # call main when the script is run
 if __name__ == "__main__":
-    type_texts = ('Human', 'GoofyAI', 'NormalAI', 'SmartAI')
+    type_texts_s = ('Human', 'GoofyAI', 'NormalAI', 'SmartAI')
     pygame.init()
-    GS = GomokuStarter(type_texts,15,default_choices={0:0,1:0})
+    GS = GomokuStarter(type_texts_s, 15, default_choices={0: 0, 1: 0})
     flag_confirm = GS.start()
     if flag_confirm:
         choices = GS.choices

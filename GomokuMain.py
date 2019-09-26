@@ -55,53 +55,57 @@ class Gomoku:
         orders = self.GH.board.copy()
         running = True
         flag_win = False
+        flag_over = False
         count = 0
         winner = None
         while running:
-            clock.tick(FPS)
+            if not flag_over:
+                clock.tick(FPS)
 
-            events = pygame.event.get()
+                events = pygame.event.get()
 
-            for event in events:
-                if event.type == pygame.QUIT:
-                    running = False
+                for event in events:
+                    if event.type == pygame.QUIT:
+                        running = False
 
-            flag_over = np.all(self.GH.board != SYMBOL_EMPTY)
-            if flag_over:
-                print('tied')
+                flag_over = np.all(self.GH.board != SYMBOL_EMPTY)
+                if flag_over:
+                    print('tied')
+                    #running = False
 
-            if (not flag_win) and (not flag_over):
-                row = col = None
-                if self.get_current_player_type() == TYPE_HUMAN:
-                    for event in events:
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            row, col = self.GP.get_nearest_stone(*event.pos)
-                else:
-                    row, col = self.get_current_player_instance().decide(self.GH.board, self.GH.current_player)
-                    # time.sleep(2)
-                if all([k is not None for k in [row, col]]):
-                    flag_win = self.GH.place_piece(row, col)
-                    orders[row, col] = count
-                    count += 1
-                    if flag_win:
-                        winner = self.GH.current_player
-                        print('Player # %s wins' % self.current_player_alias)
-                        # running = False
-                        if self.player_type[self.GH.current_player] == TYPE_HUMAN:
-                            print(orders)
+                if (not flag_win) and (not flag_over):
+                    row = col = None
+                    if self.get_current_player_type() == TYPE_HUMAN:
+                        for event in events:
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                row, col = self.GP.get_nearest_stone(*event.pos)
+                    else:
+                        CPI = self.get_current_player_instance()
+                        row, col = CPI.decide(self.GH.board, self.GH.current_player)
+                        # time.sleep(2)
+                    if all([k is not None for k in [row, col]]):
+                        flag_win = self.GH.place_piece(row, col)
+                        orders[row, col] = count
+                        count += 1
+                        if flag_win:
+                            winner = self.GH.current_player
+                            print('%s wins' % self.current_player_alias)
+                            #running = False
+                            if self.player_type[self.GH.current_player] == TYPE_HUMAN:
+                                print(orders)
 
-            self.GP.paint_all(self.GH.board)
+                self.GP.paint_all(self.GH.board)
 
-            if (not flag_win) and (not flag_over):
-                if self.get_current_player_type() == TYPE_HUMAN:
-                    x, y = pygame.mouse.get_pos()
-                    row, col = self.GP.get_nearest_stone(x, y)
-                    if col >= 0 and row >= 0:
-                        if self.GH.board[row][col] == SYMBOL_EMPTY:
-                            color_t = self.GP.get_stone_color(self.GH.current_player)
-                            self.GP.draw_stone(row, col, color_t)
+                if (not flag_win) and (not flag_over):
+                    if self.get_current_player_type() == TYPE_HUMAN:
+                        x, y = pygame.mouse.get_pos()
+                        row, col = self.GP.get_nearest_stone(x, y)
+                        if col >= 0 and row >= 0:
+                            if self.GH.board[row][col] == SYMBOL_EMPTY:
+                                color_t = self.GP.get_stone_color(self.GH.current_player)
+                                self.GP.draw_stone(row, col, color_t)
 
-            pygame.display.flip()
+                pygame.display.flip()
         pygame.quit()
         return winner
 
