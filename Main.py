@@ -5,7 +5,6 @@ from GomokuAIExternal import GomokuAIExt1
 from GomokuPeripheral import GomokuStarter
 import pygame
 
-chain_num = 5
 options = {'Human': None,
            'ExtAI': lambda cn: GomokuAIExt1(),
            'NormalAI': lambda cn: GomokuAIScoreAlpha(cn),
@@ -21,6 +20,8 @@ flag_confirm = GS.start()
 if flag_confirm:
     choices = GS.choices
     chain_num = GS.chain_num
+    rows = GS.rows
+    cols = GS.cols
     print(choices)
     idx_valid = [hh for hh in range(len(choices)) if choices[hh] is not None]
     choices_valid = [choices[hh] for hh in idx_valid]
@@ -31,7 +32,8 @@ if flag_confirm:
     G = Gomoku(player_alias=player_aliases,
                player_type=player_types,
                player_instances=player_instances,
-               chain_num=chain_num)
+               chain_num=chain_num,
+               r=rows, c=cols)
     winner = G.start_game()
     print(winner)
 

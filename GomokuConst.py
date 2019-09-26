@@ -1,8 +1,12 @@
 import os
 
 rows_default = cols_default = 19
+# rows_default, cols_default = 12,20
 chain_num_default = 5
-cns_default = (chain_num_default - 2, chain_num_default, chain_num_default + 2)
+sdgen = lambda x,y: (x-y,x,x+y)
+cns_default = sdgen(chain_num_default,2)
+rse_default = sdgen(rows_default,10)
+cse_default = sdgen(cols_default,10)
 
 SYMBOL_WHITE = 1
 SYMBOL_BLACK = 0
