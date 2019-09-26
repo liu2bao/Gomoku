@@ -187,15 +187,15 @@ class GomokuPainter:
                                    [int(p) for p in [self._coords[LABEL_X][xs], self._coords[LABEL_Y][ys]]],
                                    int(LINE_WIDTH * 3))
 
-    def draw_stone(self, row, col, color):
+    def draw_stone(self, row, col, color, width=0):
         w_t = self._intervals[LABEL_X] * self.__rate_stone
         h_t = self._intervals[LABEL_Y] * self.__rate_stone
         x_t = self._coords[LABEL_X][col]
         y_t = self._coords[LABEL_Y][row]
         rect_t = [x_t - w_t / 2, y_t - h_t / 2, w_t, h_t]
-        pygame.draw.ellipse(self.__screen, color, rect_t)
+        pygame.draw.ellipse(self.__screen, color, rect_t, width)
         # r_t = min(w_t,h_t)/2
-        # pygame.draw.circle(self.__screen,color,[int(round(x_t)),int(round(y_t))],int(round(r_t)))
+        # pygame.draw.circle(self.__screen,color,[int(round(x_t)),int(round(y_t))],int(round(r_t)), width)
 
     def judge_valid_player(self, player):
         f = 0 <= player < len(self._colors_stones)
