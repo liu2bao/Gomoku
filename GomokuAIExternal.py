@@ -5,10 +5,10 @@ import numpy as np
 LEVEL_X = LEVEL_Y = 19
 grade = 10
 MAX = 1008611
-
+ChainNum = 5
 
 def Scan(chesspad, color, level_x=LEVEL_X, level_y=LEVEL_Y):
-    shape = [[[0 for high in range(5)] for col in range(level_y)] for row in range(level_x)]
+    shape = [[[0 for high in range(ChainNum)] for col in range(level_y)] for row in range(level_x)]
     # 扫描每一个点，然后在空白的点每一个方向上做出价值评估！！
     for i in range(level_x):
         for j in range(level_y):
@@ -105,7 +105,7 @@ def Scan(chesspad, color, level_x=LEVEL_X, level_y=LEVEL_Y):
 def Sort(shape):
     for i in shape:
         for j in i:
-            for x in range(5):
+            for x in range(ChainNum):
                 for w in range(3, x - 1, -1):
                     if j[w - 1] < j[w]:
                         temp = j[w]
@@ -138,10 +138,9 @@ def Evaluate(shape, level_x=LEVEL_X, level_y=LEVEL_Y):
 def Autoplay(ch, m, n, level_x=LEVEL_X,level_y=LEVEL_Y):
     Ta = int((level_x - 1) / 2)
     Tb = int((level_y - 1) / 2)
-    a1 = np.random.rand(Ta)
-    b1 = np.random.rand(Tb)
-    randa = randint(0, Ta)
-    randb = randint(0, Tb)
+    a1, b1 = [np.int32(np.round((np.random.rand(k)-0.5)*2)) for k in [Ta, Tb]]
+    randa = randint(0, Ta-1)
+    randb = randint(0, Tb-1)
     while m + a1[randa] >= 0 and m + a1[randa] < level_x and n + b1[randb] >= 0 and n + b1[randb] < level_y and \
             ch[m + a1[randa]][n + b1[randb]] != 0:
         randa = randint(0, Ta)
@@ -189,7 +188,7 @@ class GomokuAIExt1:
         else:
             m = int((level_x - 1) / 2)
             n = int((level_y - 1) / 2)
-        x, y = BetaGo(Bn, m, n, -1, self._times)
+        x, y = BetaGo(Bn, m, n, -1, self._times, level_x=level_x, level_y=level_y)
         self._Bn = Bn
         self._times += 1
         return y, x

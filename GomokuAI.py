@@ -296,7 +296,7 @@ class GomokuAIScoreBeta(GomokuAIScore):
         self.max_pattern_len = max_pattern_len
 
 
-class GomokuPatternGenerator():
+class GomokuPatternGenerator:
     def __init__(self, chain_num=chain_num_default, s=1, e=SYMBOL_EMPTY, d=None):
         self._chain_num = chain_num
         self._s = s
@@ -495,6 +495,85 @@ class GomokuPatternGenerator():
         idx_max = int(np.argmax(values_sorted))
         dict_scores_sorted[keys_sorted[idx_max]] *= 10
         return dict_scores_sorted
+
+
+class GomokuAIOverlap:
+    _e = SYMBOL_EMPTY
+
+    def strip_series_to_the_end(self,board,current_player,r,c):
+
+        for d in DIRECTIONS:
+            pass
+
+
+    def decide(self,board,current_player):
+        rows, cols = board.shape
+        num_cand = min([2 * self._max_pattern_len - 1, rows, cols])
+        pos_center = int((num_cand - 1) / 2)
+        if np.all(board == SYMBOL_EMPTY):
+            rd = int(rows / 2)
+            cd = int(cols / 2)
+            return rd, cd
+        pd = np.unique(board)
+        pa = np.append(pd, current_player)
+        players = list(set(pa).difference({SYMBOL_EMPTY}))
+        numd = len(self._directions)
+        if self._board is None:
+            self._board = np.ones([rows,cols])*self._e
+            self._players = players.copy()
+            self._score_mat = np.zeros([rows,cols,len(self._players),numd])
+        else:
+            new_players = set(players).difference(set(self._players))
+            if new_players:
+                zeros_t = np.zeros([rows,cols,len(new_players),numd])
+                self._score_mat = np.concatenate([self._score_mat,zeros_t],axis=2)
+                self._players.extend(list(new_players))
+        nump = len(self._players)
+        idx_changed = np.argwhere(board!=self._board)
+        exn = self._max_pattern_len - 1
+        pos_check = []
+        for pos0 in idx_changed:
+            for ll in range(numd):
+                d_search = self._directions[ll]
+                for sig in [-1,1]:
+                    for step in range(-exn+1,exn):
+                        r,c = pos0+d_search*sig*step
+                        if (0<=r<rows) and (0<=c<cols):
+                            if board[r, c] == SYMBOL_EMPTY:
+                                pos_check.append((r,c,ll))
+                            else:
+                                self._score_mat[r, c, :, ll] = -float('inf')
+        for r,c,ll in set(pos_check):
+            # TODO: Recheck if it is the same checking only chain directions and globally checking
+            d_search = self._directions[ll]
+            series_t = self.get_series_pos_single_direction(board=board, coor_cur=np.array((r, c)), d=d_search,
+                                                            num_cand=num_cand, pos_center=pos_center,
+                                                            rows=rows, cols=cols)
+            for hh in range(nump):
+                p = self._players[hh]
+                if p == current_player:
+                    den = 1
+                    offset = 0
+                else:
+                    den = nump
+                    offset = -min(self._score_dict.values())
+                series_t_r = series_t.copy()
+                series_t_r[pos_center] = p
+                # TODO: Donnot check series with opponents
+                score_temp, pattern_matched = self.score_pos({tuple(d_search): series_t_r}, p)
+                score_temp_mod = max(0,score_temp+offset)
+                self._score_mat[r, c, hh, ll] = score_temp_mod
+        mat_scores_all_direction = np.sum(self._score_mat,axis=3)
+        if self._sum:
+            mat_scores_m = np.sum(mat_scores_all_direction, axis=2)
+        else:
+            mat_scores_m = np.max(mat_scores_all_direction, axis=2)
+        rd, cd = np.unravel_index(mat_scores_m.argmax(), mat_scores_m.shape)
+        self._board = board.copy()
+        return rd, cd
+    pass
+
+
 
 
 if __name__ == '__main__':

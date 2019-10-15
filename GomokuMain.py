@@ -103,7 +103,7 @@ class Gomoku:
                         if col >= 0 and row >= 0:
                             if self.GH.board[row][col] == SYMBOL_EMPTY:
                                 color_t = self.GP.get_stone_color(self.GH.current_player)
-                                self.GP.draw_stone(row, col, color_t, width=1)
+                                self.GP.draw_stone(row, col, color_t)
 
                 pygame.display.flip()
         pygame.quit()
